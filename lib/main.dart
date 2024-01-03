@@ -20,7 +20,7 @@ class WDPhotos extends StatefulWidget {
 }
 
 class _WDPhotosState extends State<WDPhotos> {
-  Map<String, dynamic> photos = {};
+  List<String> photos = [];
 
   final TextEditingController searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -47,10 +47,7 @@ class _WDPhotosState extends State<WDPhotos> {
           Map<String, dynamic> jsonData = jsonDecode(resp.body);
           List<dynamic> photos_result = jsonData['photos'];
           for (Map<String, dynamic> photo in photos_result) {
-            photos.add({
-              original: photo['src']['original'],
-              thumbnail: photo['src']['small'],
-            });
+            photos.add(photo['src']['medium']);
           }
         });
       } else {
