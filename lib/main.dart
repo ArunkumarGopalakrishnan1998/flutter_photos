@@ -3,8 +3,10 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:photos/preview.dart';
+import 'package:photos/saved.dart';
 import 'package:http/http.dart';
 import 'dart:convert';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -20,7 +22,7 @@ class WDPhotos extends StatefulWidget {
 }
 
 class _WDPhotosState extends State<WDPhotos> {
-  List<String> photos = [];
+  List<Map<String, String>> photos = [];
 
   final TextEditingController searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -47,7 +49,10 @@ class _WDPhotosState extends State<WDPhotos> {
           Map<String, dynamic> jsonData = jsonDecode(resp.body);
           List<dynamic> photos_result = jsonData['photos'];
           for (Map<String, dynamic> photo in photos_result) {
-            photos.add(photo['src']['medium']);
+            photos.add({
+              'thumbnail': photo['src']['small'],
+              'original': photo['src']['original']
+            });
           }
         });
       } else {
@@ -71,87 +76,123 @@ class _WDPhotosState extends State<WDPhotos> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Color.fromRGBO(35, 109, 180, 1),
-          title: const Text(
-            'Photos',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-          ),
+      appBar: AppBar(
+        title: const Text(
+          'Zoho Photos',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        body: Column(
-          children: [
-            Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        onSubmitted: (String searchTerm) {
-                          getPhotos(searchTerm);
-                        },
-                        controller: searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search...',
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.search_sharp),
-                      onPressed: () {
-                        String searchTerm = searchController.text;
+        backgroundColor: Colors.transparent,
+      ),
+      body: Column(
+        children: [
+          Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      onSubmitted: (String searchTerm) {
                         getPhotos(searchTerm);
                       },
+                      controller: searchController,
+                      decoration: InputDecoration(
+                          hintText: 'Search...',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.search_outlined)),
                     ),
-                  ],
-                )),
-            if (isLoading)
-              Center(
-                  child: LinearProgressIndicator(
-                backgroundColor: Colors.blue.shade100,
-                valueColor: AlwaysStoppedAnimation(Colors.blue),
-              )),
-            if (photos.length == 0 && !isLoading)
-              Center(
-                child: Text('Please search for photos'),
-              )
-            else
-              Expanded(
-                child: GridView.builder(
-                  physics: ScrollPhysics(),
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(1),
-                  itemCount: photos.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
                   ),
-                  itemBuilder: ((context, index) {
-                    return Container(
-                      padding: const EdgeInsets.all(1),
-                      child: InkWell(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                Preview(photos: photos, index: index),
-                          ),
+                ],
+              )),
+          if (isLoading)
+            Center(
+                child: LinearProgressIndicator(
+              backgroundColor: Colors.blue.shade100,
+              valueColor: AlwaysStoppedAnimation(Colors.blue),
+            )),
+          if (photos.length == 0 && !isLoading)
+            Expanded(
+              child: Center(
+                child: Text('Please search for photos'),
+              ),
+            )
+          else
+            Expanded(
+              child: MasonryGridView.count(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                padding: EdgeInsets.all(12.0),
+                itemCount: photos.length,
+                itemBuilder: (context, index) {
+                  return InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => Preview(photos: photos, index: index),
                         ),
-                        child: Hero(
-                          tag: photos[index],
-                          child: CachedNetworkImage(
-                            imageUrl: photos[index],
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) =>
-                                Container(color: Colors.grey),
-                            errorWidget: (context, url, error) =>
-                                Container(color: Colors.red.shade400),
-                          ),
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8.0),
+                      child: Hero(
+                        tag: photos[index],
+                        child: CachedNetworkImage(
+                          imageUrl: photos[index]['thumbnail']!,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) =>
+                              Container(color: Colors.grey),
+                          errorWidget: (context, url, error) =>
+                              Container(color: Colors.red.shade400),
                         ),
                       ),
-                    );
-                  }),
-                ),
+                    ),
+                  );
+                },
               ),
+            ),
+        ],
+      ),
+      drawer: Drawer(
+        // Add a ListView to the drawer. This ensures the user can scroll
+        // through the options in the drawer if there isn't enough vertical
+        // space to fit everything.
+        backgroundColor: Colors.white,
+        child: ListView(
+          // Important: Remove any padding from the ListView.
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                color: Color.fromRGBO(35, 109, 180, 1),
+              ),
+              child: Text('Drawer Header'),
+            ),
+            ListTile(
+              title: const Text('Saved Photos'),
+              onTap: () {
+                // Update the state of the app.
+                // ...
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => Saved(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              title: const Text('Search Photos'),
+              onTap: () {
+                // Update the state of the app.
+                // ...
+                Navigator.pop(context);
+              },
+            ),
           ],
-        ));
+        ),
+      ),
+    );
   }
 }
